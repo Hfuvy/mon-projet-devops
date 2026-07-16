@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ma-bdd
+    environment:
+      POSTGRES_DB: monappdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # ✅ J'ai changé le port externe de 5432 à 5433
+    restart: always
+
+  web:
+    build: .
+    container_name: mon-app-web
+    ports:
+      - "5000:5000"
+    environment:
+      ENV: "COMPOSE"
+      DB_HOST: db
+      DB_NAME: monappdb
+      DB_USER: admin
+      DB_PASS: secret
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  postgres_data:
