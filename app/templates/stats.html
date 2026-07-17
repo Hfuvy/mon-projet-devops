@@ -57,7 +57,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        // 🔥 Ce script est 100% JavaScript pur. AUCUNE balise Jinja {{ }}.
         document.addEventListener('DOMContentLoaded', function() {
             fetch('/api/stats-data')
                 .then(response => {
@@ -65,12 +64,10 @@
                     return response.json();
                 })
                 .then(data => {
-                    // Mettre à jour les cartes
                     document.getElementById('total-count').textContent = data.total;
                     document.getElementById('done-count').textContent = data.done;
                     document.getElementById('pending-count').textContent = data.pending;
 
-                    // Vérifier les données du graphique
                     if (data.labels && data.counts && data.labels.length > 0) {
                         const ctx = document.getElementById('tasksChart').getContext('2d');
                         new Chart(ctx, {
