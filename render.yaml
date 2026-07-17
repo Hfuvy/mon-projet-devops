@@ -10,25 +10,21 @@ services:
       - key: DB_HOST
         fromService:
           name: postgresql
-          type: postgresql
           property: host
       - key: DB_NAME
         fromService:
           name: postgresql
-          type: postgresql
           property: database
       - key: DB_USER
         fromService:
           name: postgresql
-          type: postgresql
           property: user
       - key: DB_PASS
         fromService:
           name: postgresql
-          type: postgresql
           property: password
 
-  - type: postgresql   
+  - type: postgres
     name: postgresql
     plan: free
     databaseName: monappdb
