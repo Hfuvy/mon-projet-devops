@@ -1,17 +1,21 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import User, Task
 import bcrypt
+import csv
+from io import StringIO
 
 bp = Blueprint('main', __name__)
 
-# ----- Page d'accueil (publique) -----
+# ==============================================
+#  PARTIE 1 : PAGES WEB (HTML)
+# ==============================================
+
 @bp.route('/')
 def index():
     return render_template('index.html', compteur=0, env="STRUCTURED")
 
-# ----- Authentification -----
 @bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -50,7 +54,6 @@ def logout():
     flash('Vous êtes déconnecté.', 'info')
     return redirect(url_for('main.index'))
 
-# ----- Dashboard (interface web) -----
 @bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -101,7 +104,7 @@ def toggle_task(task_id):
     if task.done:
         flash('Tâche terminée !', 'success')
     else:
-        flash(' Tâche réouverte.', 'info')
+        flash('Tâche réouverte.', 'info')
     return redirect(url_for('main.dashboard'))
 
 @bp.route('/delete_task/<int:task_id>')
@@ -113,12 +116,13 @@ def delete_task(task_id):
         return redirect(url_for('main.dashboard'))
     db.session.delete(task)
     db.session.commit()
-    flash(' Tâche supprimée.', 'info')
+    flash('Tâche supprimée.', 'info')
     return redirect(url_for('main.dashboard'))
 
-# ================================
-#  API REST (JSON) pour les tâches
-# ================================
+
+# ==============================================
+#  PARTIE 2 : API REST (JSON)
+# ==============================================
 
 @bp.route('/api/tasks', methods=['GET'])
 @login_required
@@ -132,7 +136,6 @@ def api_create_task():
     data = request.get_json()
     if not data or not data.get('title'):
         return jsonify({'error': 'Le titre est obligatoire'}), 400
-    
     task = Task(
         title=data['title'],
         description=data.get('description', ''),
@@ -148,7 +151,6 @@ def api_update_task(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         return jsonify({'error': 'Non autorisé'}), 403
-    
     data = request.get_json()
     if data.get('title') is not None:
         task.title = data['title']
@@ -156,7 +158,6 @@ def api_update_task(task_id):
         task.description = data['description']
     if data.get('done') is not None:
         task.done = bool(data['done'])
-    
     db.session.commit()
     return jsonify(task.to_dict())
 
@@ -166,12 +167,55 @@ def api_delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         return jsonify({'error': 'Non autorisé'}), 403
-    
     db.session.delete(task)
     db.session.commit()
     return jsonify({'message': 'Tâche supprimée'}), 200
 
-# ----- Santé -----
+@bp.route('/api/tasks/<int:task_id>/toggle', methods=['PATCH'])
+@login_required
+def api_toggle_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        return jsonify({'error': 'Non autorisé'}), 403
+    task.done = not task.done
+    db.session.commit()
+    return jsonify({'id': task.id, 'done': task.done})
+
+
+# ==============================================
+#  PARTIE 3 : EXPORT CSV
+# ==============================================
+
+@bp.route('/api/tasks/export', methods=['GET'])
+@login_required
+def export_tasks_csv():
+    tasks = Task.query.filter_by(user_id=current_user.id).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Titre', 'Description', 'Terminée', 'Date de création'])
+    
+    for task in tasks:
+        writer.writerow([
+            task.id,
+            task.title,
+            task.description or '',
+            'Oui' if task.done else 'Non',
+            task.created_at.strftime('%d/%m/%Y %H:%M') if task.created_at else ''
+        ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=tasks_export.csv'}
+    )
+
+
+# ==============================================
+#  PARTIE 4 : UTILITAIRES
+# ==============================================
+
 @bp.route('/health')
 def health():
-    return " Application en ligne !"
+    return "Application en ligne !"
