@@ -11,7 +11,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <span class="navbar-brand">
-                <i class="fas fa-clipboard-list me-2"></i> Mon App
+                <i class="fas fa-clipboard-list me-2"></i> TaskFlow
             </span>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
@@ -59,10 +59,14 @@
             {% if tasks %}
                 {% for task in tasks %}
                     <div class="col-md-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100 {% if task.done %}border-success bg-light{% endif %}">
                             <div class="card-body">
                                 <h5 class="card-title {% if task.done %}text-decoration-line-through text-muted{% endif %}">
-                                    {% if not task.done %}<i class="fas fa-circle text-primary me-1" style="font-size: 0.6rem;"></i>{% endif %}
+                                    {% if task.done %}
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-circle text-primary me-1" style="font-size: 0.6rem;"></i>
+                                    {% endif %}
                                     {{ task.title }}
                                 </h5>
                                 <p class="card-text text-muted">{{ task.description or '' }}</p>
@@ -72,10 +76,20 @@
                                     </small>
                                 </p>
                             </div>
-                            <div class="card-footer bg-transparent d-flex justify-content-between">
+                            <div class="card-footer bg-transparent d-flex justify-content-between flex-wrap gap-1">
+                                <!--  Bouton Terminer / Réouvrir -->
+                                <a href="{{ url_for('main.toggle_task', task_id=task.id) }}" class="btn btn-sm {% if task.done %}btn-outline-secondary{% else %}btn-success{% endif %}">
+                                    {% if task.done %}
+                                        <i class="fas fa-undo me-1"></i> Réouvrir
+                                    {% else %}
+                                        <i class="fas fa-check me-1"></i> Terminer
+                                    {% endif %}
+                                </a>
+                                <!--  Bouton Éditer -->
                                 <a href="{{ url_for('main.edit_task', task_id=task.id) }}" class="btn btn-warning btn-sm text-white">
                                     <i class="fas fa-pen me-1"></i> Éditer
                                 </a>
+                                <!--  Bouton Supprimer -->
                                 <a href="{{ url_for('main.delete_task', task_id=task.id) }}" class="btn btn-danger btn-sm">
                                     <i class="fas fa-trash me-1"></i> Supprimer
                                 </a>
