@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: mon-app-devops
+    runtime: image
+    image:
+      url: jordan237/mon-projet-devops:latest
+    envVars:
+      - key: ENV
+        value: PRODUCTION
+      - key: DB_HOST
+        fromService:
+          name: postgresql
+          type: pgsql
+          property: host
+      - key: DB_NAME
+        fromService:
+          name: postgresql
+          type: pgsql
+          property: database
+      - key: DB_USER
+        fromService:
+          name: postgresql
+          type: pgsql
+          property: user
+      - key: DB_PASS
+        fromService:
+          name: postgresql
+          type: pgsql
+          property: password
+
+  - type: pgsql
+    name: postgresql
+    plan: free
+    databaseName: monappdb
+    user: admin
