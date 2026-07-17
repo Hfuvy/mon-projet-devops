@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de bord</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">
+                <i class="fas fa-clipboard-list me-2"></i> Mon App
+            </span>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user-circle me-1"></i> {{ current_user.username }}
+                </span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i> Déconnexion
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1 class="mb-4"><i class="fas fa-tasks text-primary me-2"></i> Mes Tâches</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Formulaire d'ajout -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.add_task') }}">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" name="title" placeholder="Titre de la tâche" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="description" placeholder="Description (optionnel)">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-1"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Liste des tâches -->
+        <div class="row">
+            {% if tasks %}
+                {% for task in tasks %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title {% if task.done %}text-decoration-line-through text-muted{% endif %}">
+                                    {% if not task.done %}<i class="fas fa-circle text-primary me-1" style="font-size: 0.6rem;"></i>{% endif %}
+                                    {{ task.title }}
+                                </h5>
+                                <p class="card-text text-muted">{{ task.description or '' }}</p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="far fa-calendar-alt me-1"></i> {{ task.created_at.strftime('%d/%m/%Y') }}
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent d-flex justify-content-end">
+                                <a href="{{ url_for('main.delete_task', task_id=task.id) }}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash me-1"></i> Supprimer
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle me-2"></i> Aucune tâche pour le moment. Ajoutez-en une ci-dessus !
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

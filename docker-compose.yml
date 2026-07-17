@@ -21,7 +21,9 @@ services:
       - "5000:5000"
     environment:
       ENV: "COMPOSE"
-      DB_HOST: db
+      DATABASE_URL: "postgresql://admin:secret@db:5432/monappdb"
+      SECRET_KEY: "clef-pour-le-dev-local"
+      DB_HOST: db  # On garde pour l'instant au cas où
       DB_NAME: monappdb
       DB_USER: admin
       DB_PASS: secret
