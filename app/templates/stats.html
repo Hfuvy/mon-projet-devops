@@ -3,41 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistiques</title>
+    <title>Statistiques - TaskFlow</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container">
             <span class="navbar-brand"><i class="fas fa-chart-bar me-2"></i> Statistiques</span>
-            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-light"><i class="fas fa-arrow-left me-1"></i> Retour</a>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-1"></i> Retour
+            </a>
         </div>
     </nav>
+
     <div class="container mt-4">
         <div class="row g-4">
-            <div class="col-md-4"><div class="card text-center"><div class="card-body"><h5>Total</h5><h1>{{ total }}</h1></div></div></div>
-            <div class="col-md-4"><div class="card text-center border-success"><div class="card-body"><h5>Terminées</h5><h1 class="text-success">{{ done }}</h1></div></div></div>
-            <div class="col-md-4"><div class="card text-center border-warning"><div class="card-body"><h5>En cours</h5><h1 class="text-warning">{{ pending }}</h1></div></div></div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5>Total</h5>
+                        <h1 id="total-count" class="text-primary">0</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h5>Terminées</h5>
+                        <h1 id="done-count" class="text-success">0</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h5>En cours</h5>
+                        <h1 id="pending-count" class="text-warning">0</h1>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card mt-4"><div class="card-body"><canvas id="tasksChart"></canvas></div></div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <canvas id="tasksChart" style="height:300px; width:100%;"></canvas>
+            </div>
+        </div>
+        <div id="chartError" class="alert alert-danger mt-3 d-none">
+            <i class="fas fa-exclamation-triangle me-2"></i> Impossible de charger les données.
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        const ctx = document.getElementById('tasksChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-            labels: {{ date_labels|tojson }}, 
-                datasets: [{
-                    label: 'Tâches créées',
-                    data: {{ counts|tojson }},
-                    backgroundColor: 'rgba(13, 110, 253, 0.5)',
-                    borderColor: 'rgba(13, 110, 253, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        // 🔥 Ce script est 100% JavaScript pur. AUCUNE balise Jinja {{ }}.
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/stats-data')
+                .then(response => {
+                    if (!response.ok) throw new Error('Erreur réseau');
+                    return response.json();
+                })
+                .then(data => {
+                    // Mettre à jour les cartes
+                    document.getElementById('total-count').textContent = data.total;
+                    document.getElementById('done-count').textContent = data.done;
+                    document.getElementById('pending-count').textContent = data.pending;
+
+                    // Vérifier les données du graphique
+                    if (data.labels && data.counts && data.labels.length > 0) {
+                        const ctx = document.getElementById('tasksChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: data.labels,
+                                datasets: [{
+                                    label: 'Tâches créées par jour',
+                                    data: data.counts,
+                                    backgroundColor: 'rgba(13, 110, 253, 0.5)',
+                                    borderColor: 'rgba(13, 110, 253, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { stepSize: 1 }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                    } else {
+                        document.getElementById('chartError').classList.remove('d-none');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    document.getElementById('chartError').classList.remove('d-none');
+                });
         });
     </script>
 </body>

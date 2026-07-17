@@ -20,7 +20,6 @@ class Task(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # 🆕 Nouvelle méthode pour convertir la tâche en dictionnaire (JSON)
     def to_dict(self):
         return {
             'id': self.id,

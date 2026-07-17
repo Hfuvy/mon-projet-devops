@@ -162,17 +162,22 @@ def delete_task(task_id):
     return redirect(url_for('main.dashboard'))
 
 # ==============================================
-#  PARTIE 2 : STATISTIQUES
+#  PARTIE 2 : STATISTIQUES (Page + API)
 # ==============================================
 
 @bp.route('/stats')
 @login_required
 def stats():
+    return render_template('stats.html')
+
+@bp.route('/api/stats-data')
+@login_required
+def api_stats_data():
     total = Task.query.filter_by(user_id=current_user.id).count()
     done = Task.query.filter_by(user_id=current_user.id, done=True).count()
     pending = total - done
     
-    # Tâches par jour (7 derniers jours)
+    # Données pour le graphique (7 derniers jours)
     dates = [(datetime.now() - timedelta(days=i)).date() for i in range(6, -1, -1)]
     counts = []
     for d in dates:
@@ -185,12 +190,14 @@ def stats():
     
     date_labels = [d.strftime('%d/%m') for d in dates]
     
-    return render_template('stats.html', 
-                         total=total, 
-                         done=done, 
-                         pending=pending,
-                         date_labels=date_labels,
-                         counts=counts)
+    return jsonify({
+        'total': total,
+        'done': done,
+        'pending': pending,
+        'labels': date_labels,
+        'counts': counts
+    })
+
 # ==============================================
 #  PARTIE 3 : API REST (JSON)
 # ==============================================
