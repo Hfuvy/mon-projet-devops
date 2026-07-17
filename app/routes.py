@@ -2,7 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import User, Task
+from sqlalchemy import or_
+from datetime import datetime, timedelta
 import bcrypt
+import re
 import csv
 from io import StringIO
 
@@ -21,10 +24,26 @@ def signup():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        
+        # Validation du mot de passe
+        if len(password) < 8:
+            flash('Le mot de passe doit faire au moins 8 caractères.', 'danger')
+            return redirect(url_for('main.signup'))
+        if not re.search(r'[A-Z]', password):
+            flash('Le mot de passe doit contenir au moins une majuscule.', 'danger')
+            return redirect(url_for('main.signup'))
+        if not re.search(r'[a-z]', password):
+            flash('Le mot de passe doit contenir au moins une minuscule.', 'danger')
+            return redirect(url_for('main.signup'))
+        if not re.search(r'[0-9]', password):
+            flash('Le mot de passe doit contenir au moins un chiffre.', 'danger')
+            return redirect(url_for('main.signup'))
+        
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Ce nom d\'utilisateur est déjà pris.', 'danger')
             return redirect(url_for('main.signup'))
+        
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         new_user = User(username=username, password_hash=hashed.decode('utf-8'))
         db.session.add(new_user)
@@ -57,8 +76,31 @@ def logout():
 @bp.route('/dashboard')
 @login_required
 def dashboard():
-    tasks = Task.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard.html', tasks=tasks)
+    query = Task.query.filter_by(user_id=current_user.id)
+    
+    # Filtre par statut
+    filter_status = request.args.get('filter', 'all')
+    if filter_status == 'done':
+        query = query.filter_by(done=True)
+    elif filter_status == 'pending':
+        query = query.filter_by(done=False)
+    
+    # Recherche par titre
+    search = request.args.get('q', '')
+    if search:
+        query = query.filter(Task.title.ilike(f'%{search}%'))
+    
+    # Pagination (5 par page)
+    page = request.args.get('page', 1, type=int)
+    per_page = 5
+    pagination = query.order_by(Task.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    tasks = pagination.items
+    
+    return render_template('dashboard.html', 
+                         tasks=tasks, 
+                         pagination=pagination,
+                         filter_status=filter_status, 
+                         search=search)
 
 @bp.route('/add_task', methods=['POST'])
 @login_required
@@ -119,9 +161,38 @@ def delete_task(task_id):
     flash('Tâche supprimée.', 'info')
     return redirect(url_for('main.dashboard'))
 
-
 # ==============================================
-#  PARTIE 2 : API REST (JSON)
+#  PARTIE 2 : STATISTIQUES
+# ==============================================
+
+@bp.route('/stats')
+@login_required
+def stats():
+    total = Task.query.filter_by(user_id=current_user.id).count()
+    done = Task.query.filter_by(user_id=current_user.id, done=True).count()
+    pending = total - done
+    
+    # Tâches par jour (7 derniers jours)
+    dates = [(datetime.now() - timedelta(days=i)).date() for i in range(6, -1, -1)]
+    counts = []
+    for d in dates:
+        count = Task.query.filter(
+            Task.user_id == current_user.id,
+            Task.created_at >= d,
+            Task.created_at < d + timedelta(days=1)
+        ).count()
+        counts.append(count)
+    
+    date_labels = [d.strftime('%d/%m') for d in dates]
+    
+    return render_template('stats.html', 
+                         total=total, 
+                         done=done, 
+                         pending=pending,
+                         date_labels=date_labels,
+                         counts=counts)
+# ==============================================
+#  PARTIE 3 : API REST (JSON)
 # ==============================================
 
 @bp.route('/api/tasks', methods=['GET'])
@@ -181,9 +252,8 @@ def api_toggle_task(task_id):
     db.session.commit()
     return jsonify({'id': task.id, 'done': task.done})
 
-
 # ==============================================
-#  PARTIE 3 : EXPORT CSV
+#  PARTIE 4 : EXPORT CSV
 # ==============================================
 
 @bp.route('/api/tasks/export', methods=['GET'])
@@ -211,11 +281,10 @@ def export_tasks_csv():
         headers={'Content-Disposition': 'attachment; filename=tasks_export.csv'}
     )
 
-
 # ==============================================
-#  PARTIE 4 : UTILITAIRES
+#  PARTIE 5 : UTILITAIRES
 # ==============================================
 
 @bp.route('/health')
 def health():
-    return "Application en ligne !"
+    return "✅ Application en ligne !"
