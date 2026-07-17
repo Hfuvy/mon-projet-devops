@@ -1,11 +1,10 @@
-from flask import Flask
+from flask import Flask, render_template
 import os
 import psycopg2
 
 app = Flask(__name__)
 
 def get_db_connection():
-    # Les variables d'environnement seront passées par Docker Compose
     conn = psycopg2.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
         database=os.environ.get('DB_NAME', 'monappdb'),
@@ -23,7 +22,6 @@ def init_db():
             compteur INTEGER DEFAULT 0
         );
     ''')
-    # On insère la première ligne si la table est vide
     cur.execute("INSERT INTO visites (id, compteur) SELECT 1, 0 WHERE NOT EXISTS (SELECT 1 FROM visites);")
     conn.commit()
     cur.close()
@@ -31,10 +29,7 @@ def init_db():
 
 @app.route('/')
 def hello():
-    # Initialiser la BDD si besoin
     init_db()
-    
-    # Incrémenter le compteur
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("UPDATE visites SET compteur = compteur + 1 WHERE id = 1 RETURNING compteur;")
@@ -44,7 +39,7 @@ def hello():
     conn.close()
     
     env = os.environ.get('ENV', 'local')
-    return f"🚀 DevOps en action ! Version 3.0 - Env : {env} - Visites : {compteur}"
+    return render_template('index.html', compteur=compteur, env=env)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
