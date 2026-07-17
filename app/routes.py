@@ -18,16 +18,12 @@ def signup():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Vérifier si l'utilisateur existe déjà
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Ce nom d\'utilisateur est déjà pris.', 'danger')
             return redirect(url_for('main.signup'))
         
-        # Hacher le mot de passe
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        
-        # Créer l'utilisateur
         new_user = User(username=username, password_hash=hashed.decode('utf-8'))
         db.session.add(new_user)
         db.session.commit()
@@ -45,8 +41,6 @@ def login():
         password = request.form.get('password')
         
         user = User.query.filter_by(username=username).first()
-        
-        # Vérifier le mot de passe
         if user and bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
             login_user(user)
             flash('Connexion réussie !', 'success')
@@ -64,11 +58,10 @@ def logout():
     flash('Vous êtes déconnecté.', 'info')
     return redirect(url_for('main.index'))
 
-# ----- Tableau de bord (protégé) -----
+# ----- Tableau de bord -----
 @bp.route('/dashboard')
 @login_required
 def dashboard():
-    # Récupérer les tâches de l'utilisateur connecté
     tasks = Task.query.filter_by(user_id=current_user.id).all()
     return render_template('dashboard.html', tasks=tasks)
 
@@ -87,22 +80,49 @@ def add_task():
     
     return redirect(url_for('main.dashboard'))
 
+# 🔥 NOUVEAU : Modifier une tâche
+@bp.route('/edit_task/<int:task_id>', methods=['GET', 'POST'])
+@login_required
+def edit_task(task_id):
+    # Récupérer la tâche ou renvoyer une erreur 404
+    task = Task.query.get_or_404(task_id)
+    
+    # Vérifier que la tâche appartient bien à l'utilisateur connecté
+    if task.user_id != current_user.id:
+        flash('Action non autorisée.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        
+        if title:
+            task.title = title
+            task.description = description
+            db.session.commit()
+            flash(' Tâche mise à jour !', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            flash(' Le titre est obligatoire.', 'danger')
+    
+    # Affichage du formulaire (GET)
+    return render_template('edit_task.html', task=task)
+
 # ----- Supprimer une tâche -----
 @bp.route('/delete_task/<int:task_id>')
 @login_required
 def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
-    # Vérifier que la tâche appartient bien à l'utilisateur connecté
     if task.user_id != current_user.id:
         flash('Action non autorisée.', 'danger')
         return redirect(url_for('main.dashboard'))
     
     db.session.delete(task)
     db.session.commit()
-    flash('Tâche supprimée.', 'info')
+    flash(' Tâche supprimée.', 'info')
     return redirect(url_for('main.dashboard'))
 
-# ----- Santé (pour le debug) -----
+# ----- Santé -----
 @bp.route('/health')
 def health():
-    return "✅ Nouvelle architecture chargée avec authentification !"
+    return " Nouvelle architecture chargée avec authentification !"
