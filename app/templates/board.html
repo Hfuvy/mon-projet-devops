@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project.title }} - Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .board-column {
+            background: #f4f5f7;
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 300px;
+        }
+        .task-card {
+            background: white;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            cursor: grab;
+            transition: 0.2s;
+        }
+        .task-card:active { cursor: grabbing; }
+        .task-card:hover { background: #f8f9fa; }
+        .task-card.dragging { opacity: 0.5; }
+        .delete-btn { font-size: 0.75rem; padding: 0 6px; margin-left: 6px; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">
+                <i class="fas fa-columns me-2"></i> {{ project.title }}
+                <span class="badge bg-info ms-2">Made in 🇨🇲</span>
+            </span>
+            <div>
+                <a href="{{ url_for('main.list_projects') }}" class="btn btn-outline-light btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i> Projets
+                </a>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-list-check text-primary me-2"></i> Tableau de bord</h4>
+            <div>
+                <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                    <i class="fas fa-plus me-1"></i> Tâche
+                </button>
+                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#addColumnModal">
+                    <i class="fas fa-columns me-1"></i> Colonne
+                </button>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="row" id="board-columns">
+            {% for column in columns %}
+                <div class="col-md-4 mb-3">
+                    <div class="board-column" data-column-id="{{ column.id }}">
+                        <h5 class="text-center fw-bold">{{ column.title }}</h5>
+                        <hr>
+                        <div class="task-list" data-column-id="{{ column.id }}">
+                            {% for task in column.tasks %}
+                                <div class="task-card" data-task-id="{{ task.id }}">
+                                    <strong>{{ task.title }}</strong>
+                                    {% if task.description %}
+                                        <br><small class="text-muted">{{ task.description }}</small>
+                                    {% endif %}
+                                    <a href="{{ url_for('main.delete_task_from_board', project_id=project.id, task_id=task.id) }}"
+                                       class="btn btn-danger btn-sm float-end delete-btn"
+                                       onclick="return confirm('Supprimer cette tâche ?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Modal Ajouter une tâche -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i> Nouvelle tâche</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.add_task_to_board', project_id=project.id) }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Titre</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="column_id" class="form-label">Colonne</label>
+                            <select class="form-select" id="column_id" name="column_id" required>
+                                {% for column in columns %}
+                                    <option value="{{ column.id }}">{{ column.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajouter une colonne -->
+    <div class="modal fade" id="addColumnModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-columns me-2"></i> Nouvelle colonne</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.add_column', project_id=project.id) }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="col_title" class="form-label">Titre de la colonne</label>
+                            <input type="text" class="form-control" id="col_title" name="title" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">Ajouter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const moveUrl = "{{ url_for('main.move_task', project_id=project.id) }}";
+
+            document.querySelectorAll('.task-list').forEach(function(list) {
+                new Sortable(list, {
+                    group: 'tasks',
+                    animation: 200,
+                    ghostClass: 'dragging',
+                    onEnd: function(evt) {
+                        const taskId = evt.item.dataset.taskId;
+                        const newColumnId = evt.to.dataset.columnId;
+
+                        // Feedback visuel
+                        evt.item.style.opacity = '0.5';
+
+                        fetch(moveUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                task_id: parseInt(taskId),
+                                column_id: parseInt(newColumnId)
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            evt.item.style.opacity = '1';
+                            if (data.success) {
+                                console.log('✅ Déplacement réussi');
+                            } else {
+                                console.warn('⚠️ Réponse inattendue', data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Erreur de déplacement:', error);
+                            evt.item.style.opacity = '1';
+                            // Option : alerter l'utilisateur
+                            // alert('Échec du déplacement. Veuillez réessayer.');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
