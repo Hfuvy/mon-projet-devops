@@ -40,7 +40,6 @@ def create_app():
             return 0  # La durée est mesurée automatiquement
         _custom_metrics_registered = True
 
-    # Importer les modèles et les routes
     from . import models
     from . import routes
     app.register_blueprint(routes.bp)
