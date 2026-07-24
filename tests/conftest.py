@@ -1,11 +1,19 @@
+import os
+import sys
 import pytest
+import bcrypt
 from app import create_app
 from app.models import db as _db
 from app.models import User, Task
-import bcrypt
+
+# Ajouter le chemin du projet (utile en local)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @pytest.fixture(scope='function')
 def app():
+    # ✅ Forcer l'utilisation de SQLite en mémoire pour les tests
+    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+    
     app = create_app()
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
