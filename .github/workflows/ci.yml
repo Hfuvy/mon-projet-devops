@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1️⃣ NOUVEAU JOB : On lance les tests en premier
+  # 1️⃣ Job de test
   test:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +23,8 @@ jobs:
 
       - name: Run tests with pytest
         run: |
-          pytest tests/ -v --tb=short
+          export PYTHONPATH=$PYTHONPATH:.
+          python -m pytest tests/ -v --tb=short
 
   # 2️⃣ Le build ne s'exécute que si les tests sont PASSÉS
   build-and-push:
