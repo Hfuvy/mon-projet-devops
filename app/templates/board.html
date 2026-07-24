@@ -184,13 +184,13 @@
                         .then(data => {
                             evt.item.style.opacity = '1';
                             if (data.success) {
-                                console.log('✅ Déplacement réussi');
+                                console.log('Déplacement réussi');
                             } else {
-                                console.warn('⚠️ Réponse inattendue', data);
+                                console.warn('Réponse inattendue', data);
                             }
                         })
                         .catch(error => {
-                            console.error('❌ Erreur de déplacement:', error);
+                            console.error('Erreur de déplacement:', error);
                             evt.item.style.opacity = '1';
                             // Option : alerter l'utilisateur
                             // alert('Échec du déplacement. Veuillez réessayer.');

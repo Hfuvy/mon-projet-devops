@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Collecter les métriques de l'application Flask
+  - job_name: 'taskflow-flask'
+    static_configs:
+      - targets: ['web:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Collecter les métriques de Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

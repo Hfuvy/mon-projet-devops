@@ -2,12 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import User, Task, Project, Column
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 from datetime import datetime, timedelta
 import bcrypt
 import re
 import csv
 from io import StringIO
+from prometheus_client import generate_latest, REGISTRY  # ✅ Correction ici
 
 bp = Blueprint('main', __name__)
 
@@ -316,6 +317,20 @@ def board(project_id):
     columns = Column.query.filter_by(project_id=project.id).order_by(Column.order).all()
     return render_template('board.html', project=project, columns=columns)
 
+# ✅ Route /health corrigée avec text()
+@bp.route('/health')
+def health():
+    try:
+        db.session.execute(text('SELECT 1'))
+        return jsonify({'status': 'healthy', 'database': 'connected'})
+    except Exception:
+        return jsonify({'status': 'unhealthy', 'database': 'error'}), 500
+
+# ✅ Route /metrics ajoutée manuellement (utilise generate_latest et REGISTRY)
+@bp.route('/metrics')
+def metrics():
+    return Response(generate_latest(REGISTRY), mimetype='text/plain')
+
 @bp.route('/board/<int:project_id>/add_task', methods=['POST'])
 @login_required
 def add_task_to_board(project_id):
@@ -380,11 +395,3 @@ def move_task(project_id):
     task.column_id = new_column_id
     db.session.commit()
     return jsonify({'success': True})
-
-# ==============================================
-#  PARTIE 7 : UTILITAIRES
-# ==============================================
-
-@bp.route('/health')
-def health():
-    return "✅ Application en ligne !"
