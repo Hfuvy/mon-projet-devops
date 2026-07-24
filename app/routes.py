@@ -8,9 +8,16 @@ import bcrypt
 import re
 import csv
 from io import StringIO
-from prometheus_client import generate_latest, REGISTRY  # ✅ Correction ici
+from prometheus_client import generate_latest, REGISTRY, Counter
 
 bp = Blueprint('main', __name__)
+
+# ==============================================
+#  MÉTRIQUES PERSONNALISÉES
+# ==============================================
+tasks_created = Counter('tasks_created_total', 'Total number of tasks created')
+users_registered = Counter('users_registered_total', 'Total number of users registered')
+projects_created = Counter('projects_created_total', 'Total number of projects created')
 
 # ==============================================
 #  PARTIE 1 : AUTHENTIFICATION
@@ -48,6 +55,7 @@ def signup():
         new_user = User(username=username, password_hash=hashed.decode('utf-8'))
         db.session.add(new_user)
         db.session.commit()
+        users_registered.inc()  # ✅ Incrémente le compteur d'utilisateurs
         flash('Compte créé ! Connectez-vous.', 'success')
         return redirect(url_for('main.login'))
     return render_template('signup.html')
@@ -104,6 +112,7 @@ def add_task():
         new_task = Task(title=title, description=description, user_id=current_user.id)
         db.session.add(new_task)
         db.session.commit()
+        tasks_created.inc()  # ✅ Incrémente le compteur de tâches (dashboard)
         flash('Tâche ajoutée !', 'success')
     return redirect(url_for('main.dashboard'))
 
@@ -212,6 +221,7 @@ def api_create_task():
     )
     db.session.add(task)
     db.session.commit()
+    tasks_created.inc()  # ✅ Incrémente le compteur de tâches (API)
     return jsonify(task.to_dict()), 201
 
 @bp.route('/api/tasks/<int:task_id>', methods=['PUT'])
@@ -303,6 +313,7 @@ def create_project():
             column = Column(title=col_title, order=i, project_id=project.id)
             db.session.add(column)
         db.session.commit()
+        projects_created.inc()  # ✅ Incrémente le compteur de projets
         flash('Projet créé avec succès !', 'success')
         return redirect(url_for('main.board', project_id=project.id))
     return render_template('create_project.html')
@@ -317,7 +328,10 @@ def board(project_id):
     columns = Column.query.filter_by(project_id=project.id).order_by(Column.order).all()
     return render_template('board.html', project=project, columns=columns)
 
-# ✅ Route /health corrigée avec text()
+# ==============================================
+#  PARTIE 7 : SANTÉ ET MÉTRIQUES
+# ==============================================
+
 @bp.route('/health')
 def health():
     try:
@@ -326,10 +340,13 @@ def health():
     except Exception:
         return jsonify({'status': 'unhealthy', 'database': 'error'}), 500
 
-# ✅ Route /metrics ajoutée manuellement (utilise generate_latest et REGISTRY)
 @bp.route('/metrics')
 def metrics():
     return Response(generate_latest(REGISTRY), mimetype='text/plain')
+
+# ==============================================
+#  PARTIE 8 : ROUTES DU BOARD (déjà existantes)
+# ==============================================
 
 @bp.route('/board/<int:project_id>/add_task', methods=['POST'])
 @login_required
@@ -351,6 +368,7 @@ def add_task_to_board(project_id):
     )
     db.session.add(task)
     db.session.commit()
+    tasks_created.inc()  # ✅ Incrémente le compteur de tâches (board)
     flash('Tâche ajoutée !', 'success')
     return redirect(url_for('main.board', project_id=project_id))
 
